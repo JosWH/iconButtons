@@ -8,22 +8,21 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
-    //Atributos que representan sus vistas
     private EditText etTelefono;
     private ImageButton btnLlamar,btnCamara;
-
     private String numeroDeTelefono;
-    //Codigo constante para servicio de llamda
+    private ImageView ivImagen;
     private final int PHONE_CODE = 100;
-    //Codigo Constante para activar camara
     private final int CAMERA_CODE = 50;
 
     @Override
@@ -41,16 +40,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void activarServicioCamara() {
-        Intent intentCamara = new Intent("android.media.caption.IMAGE_CAPTURE");
-        //startActivityForResult(intentCamara);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(new String[]{Manifest.permission.CAMERA},CAMERA_CODE);
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode,resultCode,data);
         switch (requestCode) {
             case CAMERA_CODE:
-                if(resultCode == Activity.RESULT_OK) {
-
+                if(resultCode == RESULT_OK) {
+                    Bitmap foto  = (Bitmap) data.getExtras().get("data");
+                    ivImagen.setImageBitmap(foto);
                 }
                 break;
             default:
@@ -61,25 +63,15 @@ public class MainActivity extends AppCompatActivity {
 
     private void activarServicioLlamada() {
         if (!numeroDeTelefono.isEmpty()) {
-            //Evaluan si su version de android es mayor o igual
-            // a la version donde el servicio de llamada cambia
-            //su forma de trabajar
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
-                //para versiones nuevas
                 requestPermissions(new String[]{Manifest.permission.CALL_PHONE},PHONE_CODE);
             } else {
-                //para versiones antiguas
                 configurarVersionAntigua();
             }
         }
     }
 
     private void configurarVersionAntigua() {
-        //Crear un Intent Implicito
-        //En el constructor configuran la accion que quieren
-        //que se realice
-        //Un segundo parametro es una URI que es algo parecido
-        //a una URL donde configuras tus parametros que envias.
         Intent intentCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + numeroDeTelefono));
         if(revisarPermisos(Manifest.permission.CALL_PHONE)) {
             startActivity(intentCall);
@@ -94,10 +86,10 @@ public class MainActivity extends AppCompatActivity {
         etTelefono = findViewById(R.id.etTelefono);
         btnLlamar = findViewById(R.id.btnLlamar);
         btnCamara = findViewById(R.id.btnCamara);
+        ivImagen = findViewById(R.id.IVImagen);
     }
 
     private boolean revisarPermisos(String permiso) {
-        //Valor entero que representa el permiso requerido en nuestra aplicacion
         int valorPermiso = this.checkCallingOrSelfPermission(permiso);
         return valorPermiso == PackageManager.PERMISSION_GRANTED;
     }
@@ -109,9 +101,7 @@ public class MainActivity extends AppCompatActivity {
             case PHONE_CODE:
                 String permiso = permissions[0];
                 int permisoOtorgado = grantResults[0];
-                //asegurarse que para llamadas van a evaluar el permiso del servicio de Llamada
                 if (permiso.equals(Manifest.permission.CALL_PHONE)) {
-                    //Evaluar si el permiso ha sido otorgado o denegado
                     if(permisoOtorgado == PackageManager.PERMISSION_GRANTED) {
                         Intent intentLlamada = new Intent(Intent.ACTION_CALL, Uri.parse("tel:"+numeroDeTelefono));
                         startActivity(intentLlamada);
@@ -120,6 +110,12 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
                 break;
+            case CAMERA_CODE:
+                int valor = grantResults[0];
+                if(valor == PackageManager.PERMISSION_GRANTED) {
+                    Intent intentCamara = new Intent("android.media.action.IMAGE_CAPTURE");
+                    startActivityForResult(intentCamara, CAMERA_CODE);
+                }
             default:
                 super.onRequestPermissionsResult(requestCode, permissions, grantResults);
                 break;
